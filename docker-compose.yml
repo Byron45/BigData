@@ -1,0 +1,172 @@
+version: '3.8'
+
+services:
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    ports:
+      - "9870:9870"
+      - "8020:8020"
+    # --- CAMBIO: Eliminamos la directiva 'command' y 'healthcheck' para usar el arranque por defecto de la imagen. ---
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+      # Descomenta esta línea SOLO la primera vez o si quieres borrar todos los datos de HDFS.
+      - HDFS_NAMENODE_FORMAT=true
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+      - HDFS_CONF_dfs_replication=2
+    volumes:
+      - namenode-data:/hadoop/dfs/name
+    networks:
+      - hadoop-net
+
+  datanode1:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode1
+    ports:
+      - "9864:9864"
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+      - HDFS_CONF_dfs_replication=2
+      - SERVICE_PRECONDITION=namenode:8020
+    volumes:
+      - datanode1-data:/hadoop/dfs/data
+    networks:
+      - hadoop-net
+
+  datanode2:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode2
+    ports:
+      - "9865:9864"
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+      - HDFS_CONF_dfs_replication=2
+      - SERVICE_PRECONDITION=namenode:8020
+    volumes:
+      - datanode2-data:/hadoop/dfs/data
+    networks:
+      - hadoop-net
+
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: resourcemanager
+    ports:
+      - "8088:8088"
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+      - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
+      - SERVICE_PRECONDITION=namenode:8020
+    networks:
+      - hadoop-net
+
+  nodemanager:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: nodemanager
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+      - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
+      - SERVICE_PRECONDITION=namenode:8020,resourcemanager:8088
+    networks:
+      - hadoop-net
+
+  historyserver:
+    image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
+    container_name: historyserver
+    ports:
+      - "8188:8188"
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+      - SERVICE_PRECONDITION=namenode:8020,resourcemanager:8088
+    networks:
+      - hadoop-net
+
+  hue:
+    image: gethue/hue:latest
+    container_name: hue
+    ports:
+      - "8888:8888"
+    environment:
+      - HUE_DATABASE_TYPE=sqlite
+      - HUE_HDFS_CLUSTER_NAMENODE_HTTP_PORT=9870
+      - HUE_HDFS_CLUSTER_NAMENODE=hdfs://namenode:8020
+      - HUE_YARN_RESOURCE_MANAGER_HOST=resourcemanager
+      - HUE_YARN_RESOURCE_MANAGER_PORT=8088
+      - HUE_HISTORY_SERVER_HOST=historyserver
+      - HUE_HISTORY_SERVER_PORT=8188
+    depends_on:
+      - namenode
+      - resourcemanager
+      - historyserver
+    networks:
+      - hadoop-net
+
+  spark-master:
+    image: bde2020/spark-master:3.1.1-hadoop3.2
+    container_name: spark-master
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    environment:
+      - INIT_DAEMON_STEP=setup_spark
+    networks:
+      - hadoop-net
+
+  spark-worker:
+    image: bde2020/spark-worker:3.1.1-hadoop3.2
+    container_name: spark-worker
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+    depends_on:
+      - spark-master
+    ports:
+      - "8081:8081"
+    networks:
+      - hadoop-net
+
+  spark-submit:
+    image: bde2020/spark-submit:3.1.1-hadoop3.2
+    container_name: spark-submit
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+    stdin_open: true
+    tty: true
+    entrypoint: ["/bin/bash"]
+    volumes:
+      - ./scripts:/scripts
+      # --- AÑADIDO: Mapea la carpeta de salida a la carpeta pública del frontend ---
+      - ./frontend/public/data:/output
+    networks:
+      - hadoop-net
+
+  backend:
+    build: ./backend/backend/
+    container_name: backend
+    ports:
+      - "8001:8001"
+    entrypoint: ["/bin/sh", "-c", "echo 'Backend: Esperando 30 segundos a que HDFS se inicie...' && sleep 30 && echo 'Backend: Iniciando aplicación Java.' && java -jar app.jar"]
+    environment:
+      - HADOOP_USER_NAME=root
+    depends_on:
+      - namenode
+      - ml-service
+    networks:
+      - hadoop-net
+
+  ml-service:
+    build: ./ml-service
+    container_name: ml-service
+    ports:
+      - "8000:8000"
+    networks:
+      - hadoop-net
+
+volumes:
+  namenode-data:
+  datanode1-data:
+  datanode2-data:
+
+networks:
+  hadoop-net:
