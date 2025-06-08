@@ -1,0 +1,36 @@
+.upload-container {
+  border: 2px dashed #ccc;
+  padding: 20px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.image-preview {
+  max-width: 100%;
+  max-height: 200px;
+  margin-top: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.upload-container button {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.upload-container button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.upload-container button:hover:not(:disabled) {
+  background-color: #0056b3;
+}

@@ -1,0 +1,52 @@
+.App {
+  text-align: center;
+  font-family: Arial, sans-serif;
+}
+
+.App-header {
+  background-color: #282c34;
+  padding: 20px;
+  color: white;
+  margin-bottom: 20px;
+}
+
+.main-content {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  padding: 10px;
+}
+
+.controls-area {
+  width: 30%;
+  padding: 15px;
+  border-right: 2px solid #eee;
+}
+
+.map-area {
+  width: 65%;
+}
+
+.loader {
+  margin-top: 15px;
+  font-weight: bold;
+  color: #007bff;
+}
+
+.error-message {
+  margin-top: 15px;
+  font-weight: bold;
+  color: #dc3545;
+}
+
+.prediction-results {
+  margin-top: 20px;
+  text-align: left;
+  border: 1px solid #ddd;
+  padding: 15px;
+  border-radius: 8px;
+}
+.prediction-results ul {
+  list-style-type: none;
+  padding: 0;
+}
